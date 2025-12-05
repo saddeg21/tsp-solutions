@@ -54,7 +54,7 @@ class TSPModel(nn.Module):
 
         return tour, log_probs
     
-    def forward_with_cache(self, coordinates, greedy=False):
+    def forward_with_cache(self, coordinates, greedy=False, encoder_output=None):
         if encoder_output is None:
             encoder_output = self.encoder(coordinates)
         batch_size, seq_len, _ = encoder_output.size()
@@ -77,7 +77,7 @@ class TSPModel(nn.Module):
         value_cache = encoder_output
 
         for _ in range(seq_len - 1): # first city already visited
-            probs = self.decoder.forward_with_cache(encoder_output, mask, first_city, current_city, key_cache, value_cache)  # (batch_size, seq_len)
+            probs = self.decoder(encoder_output, mask, first_city, current_city)  # (batch_size, seq_len)
 
             # Select a city
             if greedy:

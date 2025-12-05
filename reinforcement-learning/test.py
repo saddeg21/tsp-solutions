@@ -30,16 +30,8 @@ def load_model(model_path, device, **model_kwargs):
 
 
 def test_model(model, test_loader, device):
-    """
-    Modeli test veriseti üzerinde değerlendirir.
-    
-    Returns:
-        avg_length: Ortalama tur uzunluğu
-        all_tours: Tüm turlar
-        all_coords: Tüm koordinatlar
-        all_lengths: Tüm tur uzunlukları
-    """
     model.eval()
+
     all_tours = []
     all_coords = []
     all_lengths = []
@@ -47,6 +39,8 @@ def test_model(model, test_loader, device):
     with torch.no_grad():
         for batch in test_loader:
             coordinates = batch.to(device)
+            
+            #Greedy gives best prediction
             tour, _ = model(coordinates, greedy=True)
             tour_length = calculate_tour_length(tour, coordinates)
             
@@ -158,12 +152,27 @@ def main():
     num_layers = 3
     
     # Test dataset
-    test_size = 1000
-    batch_size = 100
+    data_dir = f"./data/tsp_{num_cities}"
+    test_path = f"{data_dir}/test.pt"
+    model_path = "best_tsp_model_reinforce.pth"
+
+    if not os.path.exists(test_path):
+        print(f"Test dataset not found at {test_path}")
+        print("Please generate dataset first:")
+        print(f"  python data/generate_dataset.py --num_cities {num_cities}")
+        return
     
-    print(f"\nTest dataseti oluşturuluyor ({test_size} örnek)...")
-    test_dataset = TSPDataset(num_sample=test_size, num_cities=num_cities)
+    if not os.path.exists(model_path):
+        print(f"Model not found at {model_path}")
+        print("Please train the model first:")
+        print(f"  python main.py")
+        return
+        
+    test_dataset = TSPDataset(file_path=test_path)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    print(f"Test dataset loaded: {len(test_dataset)} samples")
+    print(f"Batch size: {batch_size}\n")
     
     # Model oluştur
     model = TSPModel(
@@ -174,25 +183,73 @@ def main():
         num_layers=num_layers
     ).to(device)
     
-    # Eğitilmiş model varsa yükle
-    import os
-    model_path = "tsp_model.pth"
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    print(f"Model loaded from {model_path}\n")
     
-    if os.path.exists(model_path):
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        print(f"Eğitilmiş model yüklendi: {model_path}")
-    else:
-        print(f"Uyarı: Eğitilmiş model bulunamadı ({model_path})")
-        print("Rastgele ağırlıklarla test ediliyor...")
+    rint("Testing model...")
+    test_lengths, test_tours, test_coords = test_model(model, test_loader, device)
     
-    # Değerlendir ve görselleştir
-    evaluate_and_visualize(model, test_loader, device)
+    # Compute metrics
+    metrics = compute_metrics(test_lengths)
     
-    # Tek örnek çalıştır
-    print("\n" + "=" * 50)
-    print("Tek Örnek Testi")
-    print("=" * 50)
-    run_single_example(model, num_cities, device)
+    print("\n" + "="*50)
+    print("TEST RESULTS")
+    print("="*50)
+    print(f"Mean Tour Length:   {metrics['mean']:.4f}")
+    print(f"Std Dev:            {metrics['std']:.4f}")
+    print(f"Median:             {metrics['median']:.4f}")
+    print(f"Min:                {metrics['min']:.4f}")
+    print(f"Max:                {metrics['max']:.4f}")
+    print(f"Q1 (25%):           {metrics['q1']:.4f}")
+    print(f"Q3 (75%):           {metrics['q3']:.4f}")
+    print(f"IQR:                {metrics['iqr']:.4f}")
+    print("="*50 + "\n")
+    
+    # Plot best solutions
+    print("Generating visualizations...")
+    
+    # En iyi 3 çözüm
+    best_indices = torch.argsort(test_lengths)[:3]
+    best_lengths = test_lengths[best_indices]
+    best_tours = test_tours[best_indices]
+    best_coords = test_coords[best_indices]
+    
+    plot_multiple_tours(
+        best_coords.numpy(),
+        best_tours.numpy(),
+        best_lengths.numpy(),
+        title="Best 3 Solutions",
+        save_path="best_solutions.png"
+    )
+    
+    # En kötü 3 çözüm
+    worst_indices = torch.argsort(test_lengths)[-3:]
+    worst_lengths = test_lengths[worst_indices]
+    worst_tours = test_tours[worst_indices]
+    worst_coords = test_coords[worst_indices]
+    
+    plot_multiple_tours(
+        worst_coords.numpy(),
+        worst_tours.numpy(),
+        worst_lengths.numpy(),
+        title="Worst 3 Solutions",
+        save_path="worst_solutions.png"
+    )
+    
+    # Single example
+    example_idx = 0
+    plot_tour(
+        test_coords[example_idx].numpy(),
+        test_tours[example_idx].numpy(),
+        length=test_lengths[example_idx].item(),
+        title=f"Example Solution (Tour Length: {test_lengths[example_idx]:.4f})",
+        save_path="single_example.png"
+    )
+    
+    print("Visualizations saved:")
+    print("  - best_solutions.png")
+    print("  - worst_solutions.png")
+    print("  - single_example.png")
 
 
 if __name__ == "__main__":
