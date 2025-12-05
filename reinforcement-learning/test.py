@@ -9,7 +9,15 @@ from torch.utils.data import DataLoader
 
 from model import TSPModel
 from env import TSPDataset, calculate_tour_length
-from utils.visualization import plot_tour, plot_multiple_tours, plot_comparison
+from utils.visualization import (
+    plot_tour, 
+    plot_multiple_tours, 
+    plot_comparison,
+    plot_metrics_dashboard,
+    plot_length_vs_index,
+    calculate_metrics,
+    print_metrics_table
+)
 
 
 def load_model(model_path, device, **model_kwargs):
@@ -55,24 +63,20 @@ def evaluate_and_visualize(model, test_loader, device, num_visualize=6):
     """
     Modeli değerlendirir ve örnek sonuçları görselleştirir.
     """
-    print("=" * 50)
-    print("Model Değerlendirmesi")
-    print("=" * 50)
+    print("=" * 60)
+    print(" TSP Model Değerlendirmesi")
+    print("=" * 60)
     
     avg_length, all_tours, all_coords, all_lengths = test_model(model, test_loader, device)
     
-    print(f"\nTest Sonuçları:")
-    print(f"  - Test örnek sayısı: {len(all_lengths)}")
-    print(f"  - Ortalama tur uzunluğu: {avg_length:.4f}")
-    print(f"  - En kısa tur: {min(all_lengths):.4f}")
-    print(f"  - En uzun tur: {max(all_lengths):.4f}")
-    print(f"  - Standart sapma: {torch.tensor(all_lengths).std().item():.4f}")
+    # Detaylı metrikler
+    metrics = calculate_metrics(all_lengths)
+    print_metrics_table(metrics, title="Test Set Performance Metrics")
     
     # En iyi ve en kötü sonuçları bul
     sorted_indices = sorted(range(len(all_lengths)), key=lambda i: all_lengths[i])
     
     # Görselleştirme için örnekler seç
-    # En iyi 3 ve en kötü 3
     best_indices = sorted_indices[:3]
     worst_indices = sorted_indices[-3:]
     
@@ -84,28 +88,36 @@ def evaluate_and_visualize(model, test_loader, device, num_visualize=6):
     for i, idx in enumerate(worst_indices):
         print(f"  {i+1}. Tur uzunluğu: {all_lengths[idx]:.4f}")
     
-    # Görselleştir
-    print(f"\n--- Görselleştirme ---")
+    # Görselleştirme
+    print(f"\n--- Görselleştirmeler ---")
     
-    # En iyi çözümler
+    # 1. Metrics Dashboard
+    print("\n1. Metrics Dashboard oluşturuluyor...")
+    plot_metrics_dashboard(all_lengths, save_path="metrics_dashboard.png")
+    
+    # 2. Tour Length vs Index
+    print("\n2. Length vs Index grafiği oluşturuluyor...")
+    plot_length_vs_index(all_lengths, save_path="length_vs_index.png")
+    
+    # 3. En iyi çözümler
     best_coords = [all_coords[i] for i in best_indices]
     best_tours = [all_tours[i] for i in best_indices]
     best_titles = [f"En İyi {i+1}\nUzunluk: {all_lengths[idx]:.4f}" 
                    for i, idx in enumerate(best_indices)]
     
-    print("En iyi 3 çözüm görselleştiriliyor...")
+    print("\n3. En iyi 3 çözüm görselleştiriliyor...")
     plot_multiple_tours(best_coords, best_tours, best_titles, save_path="best_solutions.png")
     
-    # En kötü çözümler
+    # 4. En kötü çözümler
     worst_coords = [all_coords[i] for i in worst_indices]
     worst_tours = [all_tours[i] for i in worst_indices]
     worst_titles = [f"En Kötü {i+1}\nUzunluk: {all_lengths[idx]:.4f}" 
                     for i, idx in enumerate(worst_indices)]
     
-    print("En kötü 3 çözüm görselleştiriliyor...")
+    print("\n4. En kötü 3 çözüm görselleştiriliyor...")
     plot_multiple_tours(worst_coords, worst_tours, worst_titles, save_path="worst_solutions.png")
     
-    return avg_length
+    return metrics
 
 
 def run_single_example(model, num_cities, device):

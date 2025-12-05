@@ -25,7 +25,7 @@ def main():
     # Create datasets and dataloaders
     train_dataset = TSPDataset(train_size, num_cities)
     val_dataset = TSPDataset(val_size, num_cities)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True, persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
     # model creation

@@ -11,11 +11,11 @@ def train_epoch(model, optimizer, dataloader, device):
         coordinates = batch.to(device)  # (batch_size, num_cities, 2)
 
         # With sampling, create a tour
-        tour, log_probs = model(coordinates, greedy=False)  # (batch_size, num_cities), (batch_size, num_cities-1)
-
+        #tour, log_probs = model(coordinates, greedy=False)  # (batch_size, num_cities), (batch_size, num_cities-1)
+        tour, log_probs, encoder_output = model.forward_with_cache(coordinates, greedy=False)  # (batch_size, num_cities), (batch_size, num_cities-1)
         # with greed, create baseline tour
         with torch.no_grad():
-            baseline_tour, _ = model(coordinates, greedy=True)  # (batch_size, num_cities), (batch_size, num_cities-1)
+            baseline_tour, _, _ = model.forward_with_cache(coordinates, greedy=True)  # (batch_size, num_cities), (batch_size, num_cities-1)
 
         # calculate tour lengths
         tour_length = calculate_tour_length(tour, coordinates)  # (batch_size,)
