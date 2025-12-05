@@ -162,7 +162,7 @@ def main():
     batch_size = 100
     
     print(f"\nTest dataseti oluşturuluyor ({test_size} örnek)...")
-    test_dataset = TSPDataset(num_samples=test_size, num_cities=num_cities)
+    test_dataset = TSPDataset(num_sample=test_size, num_cities=num_cities)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
     # Model oluştur
