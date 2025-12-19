@@ -227,6 +227,77 @@ class WorkerAgent:
         return total_loss.item(), episode_reward, step_count
 
 
+def worker_process(
+        worker_id,
+        global_network,
+        optimizer,
+        env_fn,
+        global_episode_counter,
+        global_reward_queue,
+        max_episodes,
+        **kwargs # -> gamma, max_steps, entropy_coef, value_coef
+):
+    """
+    FLOW
+
+    1. Create WorkerAgent
+    2. Episode Loop:
+        a. Check global episode counter, if reached max_episodes, break
+        b. Train step call
+        3. Push episode reward to global reward queue
+    3. After reacing max_epises, stop
+
+    We will all it with mp.Process()
+    """
+    print(f"Worker {worker_id} started.")
+
+    worker = WorkerAgent(
+        worker_id=worker_id,
+        global_network=global_network,
+        optimizer=optimizer,
+        env_fn=env_fn,
+        **kwargs
+    )
+
+    while True:
+        ## We will use locks, for more info check MUTEX LOCKS, AMK OPERATING SYSTEMLERİ
+        with global_episode_counter.get_lock():
+            episode = global_episode_counter.value
+            if episode >= max_episodes:
+                break
+            global_episode_counter.value += 1
+
+        # Play an episode
+        loss, reward, steps = worker.train_step()
+
+        # Push reward to global queue
+        global_reward_queue.put(
+            {
+                "worker_id": worker_id,
+                "episode": episode,
+                "reward": reward,
+                "steps": steps,
+                "loss": loss
+            }
+        )
+
+        # at every 10 epiosode, show progress like tqdm
+        if episode % 10 == 0:
+            print(f"Worker {worker_id} Episode {episode} Reward: {reward:.2f} Steps: {steps} Loss: {loss:.4f}")
+
+    
+    print(f"Worker {worker_id} finished.")
+
+
+class A3C:
+    """
+    FLOW
+    
+    1. Create global network
+    2. create worker process as much as num_workers
+    3. every worker process runs its episode
+    """
+
 def main():
     network = A3CNetwork(state_size=4, action_size=2)
     state = torch.randn(1, 4)

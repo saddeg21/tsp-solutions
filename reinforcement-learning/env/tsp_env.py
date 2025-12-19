@@ -25,13 +25,10 @@ class TSPDataset(Dataset):
         return self.coordinates[idx]
 
     def generate_data(self, num_samples, num_cities):
-        """
-        for i in range(self.num_samples):
-            cities = torch.rand(self.num_cities, 2)
-            self.data.append(cities)
-        FASTER WAY
-        """
-        self.data = torch.rand(num_samples, num_cities, 2)
+        coords = torch.rand(num_samples, num_cities, 2)
+        self.coordinates = coords
+        return coords
+
     
 
 def calculate_tour_length(tour, coordinates):

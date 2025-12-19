@@ -3,10 +3,11 @@ from .encoder import Encoder, EncoderLayer
 from .decoder import Decoder
 from .tsp_model import TSPModel
 from .critic import Critic
+from .q_network import QNetwork
 
 """
 Reinforcement Learning Model Module
 """
 
 
-__all__ = ["MultiHeadAttention", "ScaledDotProductAttention", "Encoder", "EncoderLayer", "Decoder", "TSPModel","Critic"]
+__all__ = ["MultiHeadAttention", "ScaledDotProductAttention", "Encoder", "EncoderLayer", "Decoder", "TSPModel","Critic", "QNetwork"]
